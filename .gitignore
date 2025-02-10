@@ -1,0 +1,6 @@
+*.yml
+/secrets
+/scripts
+/postgres
+odoo/filestore
+/nginx
