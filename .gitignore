@@ -1,4 +1,5 @@
 *.yml
+*.pyc
 /secrets
 /scripts
 /postgres
