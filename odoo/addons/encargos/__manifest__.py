@@ -18,7 +18,7 @@ Gestiona encargos de obras de arte de forma automática.Calcula costes de mano d
     'version': '0.1',
 
     # any module necessary for this one to work correctly
-    'depends': ['base'],
+    'depends': ['base','sale_management','account','mrp'],
 
     # always loaded
     'data': [
