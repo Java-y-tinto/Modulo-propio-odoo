@@ -38,10 +38,14 @@ class encargo(models.Model):
     )
 
     costo_materiales = fields.Float()
+    Precio_hora = fields.Float(string="Precio por hora del encargo",required=True)
     Horas_Realizadas = fields.Float(string="Horas totales invertidas en el encargo",compute="calcular_horas")
-    @api.depends
+    #Metodo que calcula el total de horas realizadas teniendo en cuenta las sesiones
+    @api.depends('sesion_ids.Horas_sesion')
     def calcular_horas(self):
-        self.Horas_Realizadas = 0
+        for registro in self:
+        #Suma de todas las horas de las sesiones
+            registro.Horas_Realizadas = sum(registro.sesion_ids.mapped('Horas_sesion'))
 
         
     estado = fields.Selection([('c','Creado'),('i','En progreso'),('t','Terminado'),('e','Enviado')])
@@ -51,9 +55,13 @@ class encargo(models.Model):
             pass
         return super().write(vals)
     
+    #llamada al metodo encargado de crear la factura
+    def crear_factura(self):
+        return self.env['account.move'].crear_factura_desde_encargo(self)
+    
 
 
-
+#Optamos por una clase aparte para que el usuario pueda crear sus propios materiales sin depender del modulo fabricacion
 class Material(models.Model):
     _name="encargos.material"
     _description="Materiales usados en un encargo"
@@ -74,3 +82,70 @@ class Material(models.Model):
     def _calcular_costo(self):
         for registro in self:
             registro.costo_total = registro.precio * registro.cantidad
+
+#Clase que modela las sesiones de trabajo
+class Sesion(models.Model):
+    _name="encargos.sesion"
+    _description="Administra las sesiones de trabajo dedicadas a un encargo"
+
+    encargo_id = fields.Many2one('encargos.encargo',string="Encargo al que se le dedica la sesion")
+    Fecha_inicio = fields.Date(string='Fecha de inicio del encargo',default = datetime.date.today())
+    Fecha_fin = fields.Date(string="Fecha de finalización de la sesión de trabajo")
+    Horas_sesion = fields.Float(string="Horas dedicadas a la sesión")
+    Etapa = fields.Selection([('c','concepto'),('b','boceto'),('i','en progreso'),('f','finalizado')])
+    Notas = fields.Char(string="Notas de la sesion",required=False)
+    #Archivo de imagen para guardar las fotos del progreso
+    Foto_del_progreso = fields.Binary(string="Foto del progreso realizado en la sesion",required=True)
+
+
+#Clase que se encarga de hacer las facturas que hereda de Encargo
+class Factura(models.Model):
+    #Heredo de facturacion
+    _inherit = "account.move"
+
+   #Relaciono factura con encargo
+    encargo_id = fields.Many2one('encargos.encargo',string="Encargo facturado")
+ 
+    #Metodo que crea una factura desde un encargo
+    @api.model
+    def crear_factura_desde_encargo(self,encargo:encargo):
+        """
+        Método específico que se encarga de crear facturas desde encargos
+        """
+        #Array que almacena las lineas de la factura
+        lineas_factura = []
+
+        #Linea para la descripcion del encargo
+        if (encargo.Horas_Realizadas > 0):
+            lineas_factura.append((0,0,{
+                'name': f'Horas de trabajo realizdas para el encargo: {encargo.Descripcion}',
+                'quantity': encargo.Horas_Realizadas,
+                'price_unit': encargo.Precio_hora
+            }))
+
+        #Lineas para los materiales usados
+        for material in encargo.materiales_ids:
+            lineas_factura.append((0,0,{
+                'name': f'Material: {material.nombre_material}',
+                'quantity': material.cantidad,
+                'price_unit': material.precio
+            }))
+        
+        #Creo la factura
+        vals = {
+            #A quien se le hace la factura
+            'partner_id': encargo.id_cliente.id,
+            #Tipo de factura
+            'move_type': 'out_invoice', #Factura de venta
+            'invoice_line_ids': lineas_factura, #Array que representa las lineas de la factura
+            'encargo_id': encargo.id, #Encargo del que se esta haciendo la factura
+        }
+        factura = self.create(vals)
+        #Hago que Odoo abra la factura para que el usuario pueda editarla
+        return {
+            'name': 'Factura de Cliente',
+            'view_mode': 'form',
+            'res_model': 'account.move',
+            'res_id': factura.id,
+            'type': 'ir.actions.act_window',
+        }
