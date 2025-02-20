@@ -37,6 +37,13 @@ class encargo(models.Model):
         string='Materiales'
     )
 
+    #Sesiones dedicadas a un encargo
+    sesion_ids = fields.One2Many(
+        'encargos.sesion',
+        'encargo_id',
+        string='Sesiones'
+    )
+
     costo_materiales = fields.Float()
     Precio_hora = fields.Float(string="Precio por hora del encargo",required=True)
     Horas_Realizadas = fields.Float(string="Horas totales invertidas en el encargo",compute="calcular_horas")
