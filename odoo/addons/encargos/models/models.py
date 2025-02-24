@@ -119,7 +119,7 @@ class Factura(models.Model):
     _inherit = "account.move"
 
    #Relaciono factura con encargo
-    encargo_id = fields.Many2one('encargos.encargo',string="Encargo facturado")
+    encargo_id = fields.Many2One('encargos.encargo',string="Encargo facturado")
  
     #Metodo que crea una factura desde un encargo
     @api.model
