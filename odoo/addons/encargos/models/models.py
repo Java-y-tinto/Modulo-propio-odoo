@@ -2,6 +2,7 @@
 
 from odoo import models, fields, api
 import datetime
+from odoo.exceptions import ValidationError
 
 # class encargos(models.Model):
 #     _name = 'encargos.encargos'
@@ -21,12 +22,20 @@ class encargo(models.Model):
     _name="encargos.encargo"
     _description = "Gestiona los encargos realizados"
     _order = "Fecha_inicio desc, id desc"
-    id_cliente = fields.Many2One(
+    #Obtengo la moneda de Odoo puesta por el usuario
+    currency_id = fields.Many2one(
+    'res.currency',
+    string='Moneda',
+    default=lambda self: self.env.company.currency_id
+    )
+
+    id_cliente = fields.Many2one(
         'res.partner',
         string='Cliente',
         required=True,
         domain =[('customer_rank','>',0)] #Solo clientes.Odoo unifica en res.partner clientes y proveedores,entre otros
     )
+    
     Descripcion = fields.Char(string="Descripción del encargo",required=True)
     Fecha_inicio = fields.Date(string="Fecha de inicio del encargo",default=datetime.date.today())
     Fecha_fin = fields.Date(string="Fecha de finalización del encargo")
@@ -43,7 +52,7 @@ class encargo(models.Model):
     )
 
     #Sesiones dedicadas a un encargo
-    sesion_ids = fields.One2Many(
+    sesion_ids = fields.One2many(
         'encargos.sesion',
         'encargo_id',
         string='Sesiones'
@@ -52,14 +61,15 @@ class encargo(models.Model):
     costo_materiales = fields.Monetary(
         string="Costo total de materiales",
         compute="_calcular_costo_materiales",
-        store=True
+        store=True,
+        currency_field='currency_id'
     )
     @api.depends('materiales_ids.costo_total')
     def _calcular_costo_materiales(self):
         for registro in self:
             registro.costo_materiales = sum(registro.materiales_ids.mapped('costo_total'))
 
-    Precio_hora = fields.Monetary(string="Precio por hora del encargo",required=True)
+    Precio_hora = fields.Monetary(string="Precio por hora del encargo",required=True,currency_field='currency_id')
     Horas_Realizadas = fields.Float(string="Horas totales invertidas en el encargo",compute="calcular_horas")
     #Metodo que calcula el total de horas realizadas teniendo en cuenta las sesiones
     @api.depends('sesion_ids.Horas_sesion')
@@ -87,9 +97,16 @@ class Material(models.Model):
     _name="encargos.material"
     _description="Materiales usados en un encargo"
 
-    encargo_id = fields.Many2One("encargos.encargo",string="Encargo")
+    currency_id = fields.Many2one(
+    'res.currency',
+    string='Moneda',
+    related='encargo_id.currency_id',
+    store=True,
+    readonly=True
+    )   
+    encargo_id = fields.Many2one("encargos.encargo",string="Encargo")
     nombre_material = fields.Char(string="Material",required=True)
-    precio = fields.Monetary(string="Precio unitario")
+    precio = fields.Monetary(string="Precio unitario",currency_field='currency_id')
     cantidad = fields.Float(string="Cantidad de material usado en gramos",default=1.0)
     unidades_medida = fields.Selection([
         ('gramos','Gramos'),
@@ -98,7 +115,7 @@ class Material(models.Model):
         ('litros','Litros')
     ],string="Unidad de medida",default='mililitros')
 
-    costo_total = fields.Monetary(string="Costo total de todos los materiales",compute="_calcular_costo",store=True)
+    costo_total = fields.Monetary(string="Costo total de todos los materiales",compute="_calcular_costo",store=True,currency_field='currency_id')
     @api.depends('precio','cantidad')
     def _calcular_costo(self):
         for registro in self:
@@ -133,7 +150,7 @@ class Factura(models.Model):
     _inherit = "account.move"
 
    #Relaciono factura con encargo
-    encargo_id = fields.Many2One('encargos.encargo',string="Encargo facturado")
+    encargo_id = fields.Many2one('encargos.encargo',string="Encargo facturado")
  
     #Metodo que crea una factura desde un encargo
     @api.model
