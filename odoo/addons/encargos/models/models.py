@@ -2,7 +2,7 @@
 
 from odoo import models, fields, api
 import datetime
-
+from odoo.exceptions import ValidationError
 # class encargos(models.Model):
 #     _name = 'encargos.encargos'
 #     _description = 'encargos.encargos'
