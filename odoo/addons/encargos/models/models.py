@@ -149,6 +149,9 @@ class Factura(models.Model):
         }
         factura = self.create(vals)
         #Hago que Odoo abra la factura para que el usuario pueda editarla
+        #Esto se llama acción 
+        #https://www.odoo.com/documentation/18.0/es/developer/reference/backend/actions.html 
+
         return {
             'name': 'Factura de Cliente',
             'view_mode': 'form',
