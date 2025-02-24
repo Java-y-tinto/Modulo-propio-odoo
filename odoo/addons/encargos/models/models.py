@@ -21,7 +21,7 @@ class encargo(models.Model):
     _name="encargos.encargo"
     _description = "Gestiona los encargos realizados"
     _order = "Fecha_inicio desc, id desc"
-    id_cliente = fields.Many2one(
+    id_cliente = fields.Many2One(
         'res.partner',
         string='Cliente',
         required=True,
@@ -30,6 +30,12 @@ class encargo(models.Model):
     Descripcion = fields.Char(string="Descripción del encargo",required=True)
     Fecha_inicio = fields.Date(string="Fecha de inicio del encargo",default=datetime.date.today())
     Fecha_fin = fields.Date(string="Fecha de finalización del encargo")
+    @api.constrains('Fecha_inicio','Fecha_fin')
+    def _comprobar_fecha(self):
+        for registro in self:
+            if registro.Fecha_inicio > registro.Fecha_fin:
+                raise ValidationError('La fecha de inicio debe ser anterior a la de finalización')
+            
     materiales_ids = fields.One2many(
         'encargos.material',
         'encargo_id',
@@ -104,8 +110,16 @@ class Sesion(models.Model):
     _description="Administra las sesiones de trabajo dedicadas a un encargo"
 
     encargo_id = fields.Many2one('encargos.encargo',string="Encargo al que se le dedica la sesion")
-    Fecha_inicio = fields.Date(string='Fecha de inicio del encargo',default = datetime.date.today())
+    Fecha_inicio = fields.Date(string='Fecha de inicio de la sesión',default = datetime.date.today())
     Fecha_fin = fields.Date(string="Fecha de finalización de la sesión de trabajo")
+    @api.constrains('encargo_id.Fecha_inicio','Fecha_inicio','Fecha_fin')
+    def _comprobar_fecha(self):
+        for registro in self:
+            if registro.encargo_id.Fecha_inicio < registro.Fecha_inicio:
+                raise ValidationError("La fecha de inicio de la sesion no puede ser anterior a la de creación del encargo")
+            if registro.Fecha_fin < registro.Fecha_inicio:
+                raise ValidationError("La fecha de inicio no puede ser anterior a la de fin")
+
     Horas_sesion = fields.Float(string="Horas dedicadas a la sesión")
     Etapa = fields.Selection([('c','concepto'),('b','boceto'),('i','en progreso'),('f','finalizado')])
     Notas = fields.Char(string="Notas de la sesion",required=False)
@@ -133,7 +147,7 @@ class Factura(models.Model):
         #Linea para la descripcion del encargo
         if (encargo.Horas_Realizadas > 0):
             lineas_factura.append((0,0,{
-                'name': f'Horas de trabajo realizdas para el encargo: {encargo.Descripcion}',
+                'name': f'Horas de trabajo realizadas para el encargo: {encargo.Descripcion}',
                 'quantity': encargo.Horas_Realizadas,
                 'price_unit': encargo.Precio_hora
             }))
