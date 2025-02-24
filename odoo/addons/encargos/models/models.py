@@ -25,7 +25,6 @@ class encargo(models.Model):
         'res.partner',
         string='Cliente',
         required=True,
-        tracking=True,
         domain =[('customer_rank','>',0)] #Solo clientes.Odoo unifica en res.partner clientes y proveedores,entre otros
     )
     Descripcion = fields.Char(string="Descripción del encargo",required=True)
@@ -44,8 +43,17 @@ class encargo(models.Model):
         string='Sesiones'
     )
 
-    costo_materiales = fields.Float()
-    Precio_hora = fields.Float(string="Precio por hora del encargo",required=True)
+    costo_materiales = fields.Monetary(
+        string="Costo total de materiales",
+        compute="_calcular_costo_materiales",
+        store=True
+    )
+    @api.depends('materiales_ids.costo_total')
+    def _calcular_costo_materiales(self):
+        for registro in self:
+            registro.costo_materiales = sum(registro.materiales_ids.mapped('costo_total'))
+
+    Precio_hora = fields.Monetary(string="Precio por hora del encargo",required=True)
     Horas_Realizadas = fields.Float(string="Horas totales invertidas en el encargo",compute="calcular_horas")
     #Metodo que calcula el total de horas realizadas teniendo en cuenta las sesiones
     @api.depends('sesion_ids.Horas_sesion')
@@ -73,9 +81,9 @@ class Material(models.Model):
     _name="encargos.material"
     _description="Materiales usados en un encargo"
 
-    encargo_id = fields.Many2one("encargos.encargo",string="Encargo")
+    encargo_id = fields.Many2One("encargos.encargo",string="Encargo")
     nombre_material = fields.Char(string="Material",required=True)
-    precio = fields.Float(string="Precio unitario")
+    precio = fields.Monetary(string="Precio unitario")
     cantidad = fields.Float(string="Cantidad de material usado en gramos",default=1.0)
     unidades_medida = fields.Selection([
         ('gramos','Gramos'),
@@ -84,7 +92,7 @@ class Material(models.Model):
         ('litros','Litros')
     ],string="Unidad de medida",default='mililitros')
 
-    costo_total = fields.Float(string="Costo total de todos los materiales",compute="_calcular_costo",store=True)
+    costo_total = fields.Monetary(string="Costo total de todos los materiales",compute="_calcular_costo",store=True)
     @api.depends('precio','cantidad')
     def _calcular_costo(self):
         for registro in self:
