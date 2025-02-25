@@ -1,60 +1,302 @@
 <odoo>
   <data>
-    <!-- explicit list view definition -->
-<!--
-    <record model="ir.ui.view" id="encargos.list">
-      <field name="name">Encargos list</field>
-      <field name="model">encargos.encargos</field>
+    <!-- Top menu item -->
+    <menuitem name="Encargos" id="encargos.menu_root"/>
+
+    <!-- menu categories -->
+    <menuitem 
+      name="Encargos"
+      parent="encargos.menu_root"
+      id="encargos.menu_1"
+    />
+
+    <!-- actions -->
+    <record id="encargos_action_window" model="ir.actions.act_window">
+    <field name="name">Encargos</field>
+    <field name="res_model">encargos.encargo</field>
+    <field name="view_mode">kanban,form,list</field>
+    <field name="context">{'group_by': 'estado'}</field>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_smiling_face">
+        Crea tu primer encargo
+      </p>
+      <p>
+        Organiza tus proyectos y mantén un seguimiento de tus encargos con el sistema de gestión de encargos.
+      </p>
+    </field>
+  </record>
+
+
+    <!-- Link the menu to the action -->
+    <menuitem 
+  name="Ver Encargos" 
+  id="encargos.menu_1_kanban" 
+  parent="encargos.menu_1"
+  action="encargos_action_window"
+/>
+
+  <record id="encargos_kanban_view" model="ir.ui.view">
+  <field name="name">encargos.encargo.view.kanban</field>
+  <field name="model">encargos.encargo</field>
+  <field name="arch" type="xml">
+    <kanban default_group_by="estado" class="o_kanban_small_column" records_draggable="1">
+      <!-- Campos del kanban -->
+      <field name="estado"/>
+      <field name="id"/>
+      <field name="Descripcion"/>
+      <field name="id_cliente"/>
+      <field name="Fecha_inicio"/>
+      <field name="Fecha_fin"/>
+      <field name="Horas_Realizadas"/>
+      <field name="Precio_hora"/>
+      <field name="costo_materiales"/>
+
+      <!-- Definición explícita de grupos -->
+      <field name="currency_id" invisible="1"/>
+      
+      <!-- Columnas explícitas - ESTO ES CLAVE PARA ODOO 18 -->
+      <groups>
+        <field name="estado" string="Estado"/>
+        <group string="Creado" name="c"/>
+        <group string="En progreso" name="i"/>
+        <group string="Terminado" name="t"/>
+        <group string="Enviado" name="e"/>
+      </groups>
+
+      <!-- Plantilla de las tarjetas -->
+      <templates>
+        <t t-name="kanban-box">
+          <div t-attf-class="oe_kanban_card oe_kanban_global_click">
+            <div class="oe_kanban_content">
+              <!-- Encabezado con descripción del encargo -->
+              <div class="oe_kanban_card_header">
+                <strong class="o_kanban_record_title"><field name="Descripcion"/></strong>
+              </div>                            
+              <!-- Cliente -->
+              <div class="mt-2">
+                <i class="fa fa-user" title="Cliente"/> <field name="id_cliente"/>
+              </div>
+                            
+              <!-- Fechas -->
+              <div class="mt-1">
+                <span><i class="fa fa-calendar" title="Fecha inicio"/> <field name="Fecha_inicio"/></span>
+                <t t-if="record.Fecha_fin.raw_value">
+                  <span class="ml-2"><i class="fa fa-calendar-check-o" title="Fecha fin"/> <field name="Fecha_fin"/></span>
+                </t>
+              </div>
+              
+              <!-- Horas y costos -->
+              <div class="row mt-2">
+                <div class="col-6">
+                  <small><i class="fa fa-clock-o"/> <field name="Horas_Realizadas"/> horas</small>
+                </div>
+                <div class="col-6 text-right">
+                  <small><i class="fa fa-money"/> <field name="costo_materiales" widget="monetary"/></small>
+                </div>
+              </div>                          
+              
+              <!-- Barra de progreso basada en las sesiones -->
+              <div class="o_kanban_record_bottom mt-2">
+                <t t-if="record.Horas_Realizadas.raw_value > 0">
+                  <div class="oe_kanban_bottom_left">
+                    <field name="Precio_hora" widget="monetary"/> / hora
+                  </div>
+                </t>
+                                
+                <!-- Estado como etiqueta de color -->
+                <div class="oe_kanban_bottom_right">
+                  <t t-if="record.estado.raw_value == 'c'">
+                    <span class="badge badge-info">Creado</span>
+                  </t>
+                  <t t-if="record.estado.raw_value == 'i'">
+                    <span class="badge badge-warning">En progreso</span>
+                  </t>
+                  <t t-if="record.estado.raw_value == 't'">
+                    <span class="badge badge-success">Terminado</span>
+                  </t>
+                  <t t-if="record.estado.raw_value == 'e'">
+                   <span class="badge badge-primary">Enviado</span>
+                  </t>
+                </div>
+              </div>
+            </div>
+          </div>
+        </t>
+      </templates>
+    </kanban>
+  </field>
+</record>
+    <!-- Vista formulario para Encargo -->
+    <record id="encargos_form_view" model="ir.ui.view">
+      <field name="name">encargos.encargo.view.form</field>
+      <field name="model">encargos.encargo</field>
       <field name="arch" type="xml">
-        <list>
-          <field name="name"/>
-          <field name="value"/>
-          <field name="value2"/>
-        </list>
+        <form>
+          <header>
+            <button name="crear_factura" string="Crear Factura" type="object" class="oe_highlight"/>
+            <field name="estado" widget="statusbar" options="{'clickable': '1'}" statusbar_visible="c,i,t,e"/>
+          </header>
+          <sheet>
+            <div class="oe_title">
+              <h1>
+                <field name="Descripcion" placeholder="Descripción del encargo"/>
+              </h1>
+            </div>
+            <group>
+              <group>
+                <field name="id_cliente"/>
+                <field name="Fecha_inicio"/>
+                <field name="Fecha_fin"/>
+              </group>
+              <group>
+                <field name="Precio_hora"/>
+                <field name="Horas_Realizadas"/>
+                <field name="costo_materiales"/>
+                <field name="currency_id" invisible="1"/>
+              </group>
+            </group>
+            <notebook>
+<page string="Materiales">
+  <field name="materiales_ids">
+    <list editable="bottom">
+      <field name="nombre_material"/>
+      <field name="precio_unitario" widget="monetary"/>
+      <field name="cantidad"/>
+      <field name="unidades_medida"/>
+      <field name="costo_total" widget="monetary"/>
+      <field name="currency_id" invisible="1"/>
+    </list>
+  </field>
+</page>
+              <page string="Sesiones">
+                <field name="sesion_ids">
+                  <list>
+                    <field name="Fecha_inicio"/>
+                    <field name="Fecha_fin"/>
+                    <field name="Horas_sesion"/>
+                    <field name="Etapa"/>
+                    <field name="Notas"/>
+                  </list>
+                </field>
+              </page>
+            </notebook>
+          </sheet>
+        </form>
       </field>
     </record>
--->
 
-    <!-- actions opening views on models -->
-<!--
-    <record model="ir.actions.act_window" id="encargos.action_window">
-      <field name="name">Encargos window</field>
-      <field name="res_model">encargos.encargos</field>
+    <!-- Vista formulario para Materiales -->
+<record id="material_form_view" model="ir.ui.view">
+  <field name="name">encargos.material.view.form</field>
+  <field name="model">encargos.material</field>
+  <field name="arch" type="xml">
+    <form>
+      <sheet>
+        <group>
+          <group string="Información básica">
+            <field name="encargo_id"/>
+            <field name="product_id" options="{'no_create': false, 'no_open': false}"/>
+            <field name="nombre_material"/>
+          </group>
+          <group string="Precio y unidades">
+            <field name="precio_unitario"/>
+            <field name="unidades_medida"/>
+            <field name="currency_id" invisible="1"/>
+          </group>
+        </group>
+        
+        <group string="Uso en este encargo">
+          <field name="cantidad"/>
+          <field name="costo_total" widget="monetary"/>
+        </group>
+      </sheet>
+    </form>
+  </field>
+</record>
+    <!-- Vista formulario para Sesiones -->
+    <record id="sesion_form_view" model="ir.ui.view">
+      <field name="name">encargos.sesion.view.form</field>
+      <field name="model">encargos.sesion</field>
+      <field name="arch" type="xml">
+        <form>
+          <sheet>
+            <group>
+              <group>
+                <field name="encargo_id"/>
+                <field name="Fecha_inicio"/>
+                <field name="Fecha_fin"/>
+                <field name="Horas_sesion"/>
+              </group>
+              <group>
+                <field name="Etapa"/>
+                <field name="Notas"/>
+                <field name="Foto_del_progreso" widget="image"/>
+              </group>
+            </group>
+          </sheet>
+        </form>
+      </field>
+    </record>
+
+<!-- Vista list de sesiones-->
+<record id="sesion_list_view" model="ir.ui.view">
+  <field name="name">encargos.sesion.view.list</field>
+  <field name="model">encargos.sesion</field>
+  <field name="arch" type="xml">
+    <list string="Sesiones de Trabajo">
+      <field name="encargo_id"/>
+      <field name="Fecha_inicio"/>
+      <field name="Fecha_fin"/>
+      <field name="Horas_sesion"/>
+      <field name="Etapa"/>
+      <field name="Notas"/>
+    </list>
+  </field>
+</record>
+
+<!-- Vista list de materiales -->
+<record id="material_list_view" model="ir.ui.view">
+  <field name="name">encargos.material.view.list</field>
+  <field name="model">encargos.material</field>
+  <field name="arch" type="xml">
+    <list string="Materiales">
+      <field name="encargo_id"/>
+      <field name="product_id"/>
+      <field name="nombre_material"/>
+      <field name="unidades_medida"/>
+      <field name="cantidad"/>
+      <field name="precio_unitario" widget="monetary"/>
+      <field name="costo_total" widget="monetary" sum="Total"/>
+      <field name="currency_id" invisible="1"/>
+    </list>
+  </field>
+</record>
+    <!-- Acciones para materiales y sesiones -->
+    <record model="ir.actions.act_window" id="material_action_window">
+      <field name="name">Materiales</field>
+      <field name="res_model">encargos.material</field>
       <field name="view_mode">list,form</field>
     </record>
--->
 
-    <!-- server action to the one above -->
-<!--
-    <record model="ir.actions.server" id="encargos.action_server">
-      <field name="name">Encargos server</field>
-      <field name="model_id" ref="model_encargos_encargos"/>
-      <field name="state">code</field>
-      <field name="code">
-        action = {
-          "type": "ir.actions.act_window",
-          "view_mode": "list,form",
-          "res_model": model._name,
-        }
-      </field>
+    <record model="ir.actions.act_window" id="sesion_action_window">
+      <field name="name">Sesiones de Trabajo</field>
+      <field name="res_model">encargos.sesion</field>
+      <field name="view_mode">list,form</field>
     </record>
--->
 
-    <!-- Top menu item -->
-<!--
-    <menuitem name="Encargos" id="encargos.menu_root"/>
--->
-    <!-- menu categories -->
-<!--
-    <menuitem name="Menu 1" id="encargos.menu_1" parent="encargos.menu_root"/>
-    <menuitem name="Menu 2" id="encargos.menu_2" parent="encargos.menu_root"/>
--->
-    <!-- actions -->
-<!--
-    <menuitem name="List" id="encargos.menu_1_list" parent="encargos.menu_1"
-              action="encargos.action_window"/>
-    <menuitem name="Server to list" id="encargos" parent="encargos.menu_2"
-              action="encargos.action_server"/>
--->
+    <!-- Menús adicionales -->
+    <menuitem 
+      name="Materiales" 
+      id="encargos.menu_materiales" 
+      parent="encargos.menu_root"
+      action="material_action_window"
+    />
+
+    <menuitem 
+      name="Sesiones" 
+      id="encargos.menu_sesiones" 
+      parent="encargos.menu_root"
+      action="sesion_action_window"
+    />
   </data>
 </odoo>

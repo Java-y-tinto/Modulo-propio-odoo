@@ -3,7 +3,6 @@
 from odoo import models, fields, api
 import datetime
 from odoo.exceptions import ValidationError
-
 # class encargos(models.Model):
 #     _name = 'encargos.encargos'
 #     _description = 'encargos.encargos'
@@ -22,6 +21,8 @@ class encargo(models.Model):
     _name="encargos.encargo"
     _description = "Gestiona los encargos realizados"
     _order = "Fecha_inicio desc, id desc"
+    #Para que Odoo me encuentre los encargos al crear sesiones y materiañes
+    _rec_name = 'Descripcion'
     #Obtengo la moneda de Odoo puesta por el usuario
     currency_id = fields.Many2one(
     'res.currency',
@@ -42,8 +43,10 @@ class encargo(models.Model):
     @api.constrains('Fecha_inicio','Fecha_fin')
     def _comprobar_fecha(self):
         for registro in self:
-            if registro.Fecha_inicio > registro.Fecha_fin:
-                raise ValidationError('La fecha de inicio debe ser anterior a la de finalización')
+        # Solo validar si la fecha de fin está establecida manualmente
+            if registro.Fecha_inicio and registro.Fecha_fin:
+                if registro.Fecha_inicio > registro.Fecha_fin:
+                    raise ValidationError('La fecha de inicio debe ser anterior a la de finalización')
             
     materiales_ids = fields.One2many(
         'encargos.material',
@@ -79,11 +82,21 @@ class encargo(models.Model):
             registro.Horas_Realizadas = sum(registro.sesion_ids.mapped('Horas_sesion'))
 
         
-    estado = fields.Selection([('c','Creado'),('i','En progreso'),('t','Terminado'),('e','Enviado')])
-    #Metodo provisional por si hay que  implementar eventos al cambiar el encargo de estado
+    estado = fields.Selection([('c','Creado'),('i','En progreso'),('t','Terminado'),('e','Enviado')],default='c',string="Estado del encargo",group_expand='_mostrar_todas_columnas')
+    @api.model
+    def _mostrar_todas_columnas(self,estado,dominio,orden=None):
+        #Muestro todos los estados siempre
+        return ['c','i','t','e']
+    #Metodo que se ejecuta cuando un encargo cambia de estado
     def write(self,vals):
-        if 'estado' in vals:
-            pass
+      # Si el estado cambia a 'Terminado' y no hay fecha de fin, establecer la fecha actual
+        if vals.get('estado') == 't' and not self.Fecha_fin:
+            vals['Fecha_fin'] = fields.Date.today()
+    # Si el estado cambia a un estado que no es 'Terminado' o 'Enviado', borrar la fecha de fin
+        elif vals.get('estado') in ['c', 'i'] and self.Fecha_fin:
+            vals['Fecha_fin'] = False
+        
+
         return super().write(vals)
     
     #llamada al metodo encargado de crear la factura
@@ -92,50 +105,120 @@ class encargo(models.Model):
     
 
 
-#Optamos por una clase aparte para que el usuario pueda crear sus propios materiales sin depender del modulo fabricacion
+
 class Material(models.Model):
     _name="encargos.material"
     _description="Materiales usados en un encargo"
+    _rec_name='nombre_material'
 
-    currency_id = fields.Many2one(
-    'res.currency',
-    string='Moneda',
-    related='encargo_id.currency_id',
-    store=True,
-    readonly=True
-    )   
-    encargo_id = fields.Many2one("encargos.encargo",string="Encargo")
-    nombre_material = fields.Char(string="Material",required=True)
-    precio = fields.Monetary(string="Precio unitario",currency_field='currency_id')
-    cantidad = fields.Float(string="Cantidad de material usado en gramos",default=1.0)
+    #Relaciono con encargos
+    encargo_id = fields.Many2one(
+        'encargos.encargo',
+        string='Encargo'
+    )
+
+    #Relaciono con el modulo de productos para evitar duplicidades
+    product_id = fields.Many2one(
+        'product.product',
+        string='Producto del catálogo'
+    )
+
+    #Campos especificos del material
+    nombre_material = fields.Char(
+        string="Material", 
+        required=True,
+        compute="_compute_nombre_material",
+        store=True
+    )
+    
+    precio_unitario = fields.Monetary(
+        string="Precio unitario",
+        compute="_compute_precio_unitario",
+        store=True,
+        currency_field='currency_id'
+    )
+
     unidades_medida = fields.Selection([
-        ('gramos','Gramos'),
-        ('kilogramos','Kilogramos'),
-        ('mililitros','Mililitros'),
-        ('litros','Litros')
-    ],string="Unidad de medida",default='mililitros')
-
-    costo_total = fields.Monetary(string="Costo total de todos los materiales",compute="_calcular_costo",store=True,currency_field='currency_id')
-    @api.depends('precio','cantidad')
+        ('gramos', 'Gramos'),
+        ('kilogramos', 'Kilogramos'),
+        ('mililitros', 'Mililitros'),
+        ('litros', 'Litros'),
+        ('unidades', 'Unidades')
+    ], string="Unidad de medida", default='mililitros')
+    
+    # Cantidad usada en este encargo
+    cantidad = fields.Float(
+        string="Cantidad usada", 
+        default=1.0
+    )
+    
+    # Costo calculado
+    costo_total = fields.Monetary(
+        string="Costo total",
+        compute="_calcular_costo",
+        store=True,
+        currency_field='currency_id'
+    )
+    
+    currency_id = fields.Many2one(
+        'res.currency',
+        string='Moneda',
+        related='encargo_id.currency_id',
+        store=True,
+        readonly=True
+    )
+    
+    # Campos computados para sincronizar con productos
+    @api.depends('product_id', 'product_id.name')
+    def _compute_nombre_material(self):
+        for registro in self:
+            if registro.product_id:
+                registro.nombre_material = registro.product_id.name
+    
+    @api.depends('product_id', 'product_id.list_price')
+    def _compute_precio_unitario(self):
+        for registro in self:
+            if registro.product_id:
+                registro.precio_unitario = registro.product_id.list_price
+    
+    @api.depends('product_id', 'product_id.uom_id')
+    def _compute_unidad_medida(self):
+        for registro in self:
+            if registro.product_id and registro.product_id.uom_id:
+                registro.unidad_medida_id = registro.product_id.uom_id.id
+    
+    @api.depends('precio_unitario', 'cantidad')
     def _calcular_costo(self):
         for registro in self:
-            registro.costo_total = registro.precio * registro.cantidad
+            registro.costo_total = registro.precio_unitario * registro.cantidad
+
 
 #Clase que modela las sesiones de trabajo
 class Sesion(models.Model):
     _name="encargos.sesion"
     _description="Administra las sesiones de trabajo dedicadas a un encargo"
 
-    encargo_id = fields.Many2one('encargos.encargo',string="Encargo al que se le dedica la sesion")
+    encargo_id = fields.Many2one('encargos.encargo',
+    string="Encargo al que se le dedica la sesion",
+    required=True,
+    ondelete='cascade',
+    #Mostrar solo encargos no enviados
+    domain = [('estado','in',['c','i','t'])]
+    )
     Fecha_inicio = fields.Date(string='Fecha de inicio de la sesión',default = datetime.date.today())
-    Fecha_fin = fields.Date(string="Fecha de finalización de la sesión de trabajo")
-    @api.constrains('encargo_id.Fecha_inicio','Fecha_inicio','Fecha_fin')
+    Fecha_fin = fields.Date(string="Fecha de finalización de la sesión de trabajo",required=False)
+    @api.constrains('encargo_id.Fecha_inicio', 'Fecha_inicio', 'Fecha_fin')
     def _comprobar_fecha(self):
         for registro in self:
-            if registro.encargo_id.Fecha_inicio < registro.Fecha_inicio:
-                raise ValidationError("La fecha de inicio de la sesion no puede ser anterior a la de creación del encargo")
-            if registro.Fecha_fin < registro.Fecha_inicio:
-                raise ValidationError("La fecha de inicio no puede ser anterior a la de fin")
+            # Verificar que la fecha de inicio de la sesión no sea anterior a la fecha de inicio del encargo
+            if registro.encargo_id and registro.encargo_id.Fecha_inicio and registro.Fecha_inicio:
+                if registro.Fecha_inicio < registro.encargo_id.Fecha_inicio:
+                    raise ValidationError("La fecha de inicio de la sesión no puede ser anterior a la de creación del encargo")
+        
+            # Verificar que la fecha de fin no sea anterior a la fecha de inicio (solo si la fecha de fin está establecida)
+            if registro.Fecha_fin and registro.Fecha_inicio:
+                if registro.Fecha_fin < registro.Fecha_inicio:
+                    raise ValidationError("La fecha de finalización no puede ser anterior a la fecha de inicio")
 
     Horas_sesion = fields.Float(string="Horas dedicadas a la sesión")
     Etapa = fields.Selection([('c','concepto'),('b','boceto'),('i','en progreso'),('f','finalizado')])
@@ -155,9 +238,6 @@ class Factura(models.Model):
     #Metodo que crea una factura desde un encargo
     @api.model
     def crear_factura_desde_encargo(self,encargo:encargo):
-        """
-        Método específico que se encarga de crear facturas desde encargos
-        """
         #Array que almacena las lineas de la factura
         lineas_factura = []
 
