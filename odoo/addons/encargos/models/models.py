@@ -51,7 +51,8 @@ class encargo(models.Model):
     materiales_ids = fields.One2many(
         'encargos.material',
         'encargo_id',
-        string='Materiales'
+        string='Materiales',
+        required=True
     )
 
     #Sesiones dedicadas a un encargo
@@ -67,6 +68,7 @@ class encargo(models.Model):
         store=True,
         currency_field='currency_id'
     )
+    #Calculo el costo total de los materiales a partir del campo "costo_total" de las clases
     @api.depends('materiales_ids.costo_total')
     def _calcular_costo_materiales(self):
         for registro in self:
@@ -120,13 +122,15 @@ class Material(models.Model):
     #Relaciono con el modulo de productos para evitar duplicidades
     product_id = fields.Many2one(
         'product.product',
-        string='Producto del catálogo'
+        string='Producto del catálogo',
+        help='Selecciona un producto existente del catálogo',
+        #Si se borra el producto,se borra el material
+        ondelete='cascade'
     )
 
     #Campos especificos del material
     nombre_material = fields.Char(
         string="Material", 
-        required=True,
         compute="_compute_nombre_material",
         store=True
     )
@@ -184,6 +188,7 @@ class Material(models.Model):
     @api.depends('product_id', 'product_id.uom_id')
     def _compute_unidad_medida(self):
         for registro in self:
+            #Para registrar la unidad de medida que usa el producto
             if registro.product_id and registro.product_id.uom_id:
                 registro.unidad_medida_id = registro.product_id.uom_id.id
     
@@ -254,7 +259,7 @@ class Factura(models.Model):
             lineas_factura.append((0,0,{
                 'name': f'Material: {material.nombre_material}',
                 'quantity': material.cantidad,
-                'price_unit': material.precio
+                'price_unit': material.precio_unitario
             }))
         
         #Creo la factura
