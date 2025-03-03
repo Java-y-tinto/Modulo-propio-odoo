@@ -3,6 +3,37 @@
     <!-- Top menu item -->
     <menuitem name="Encargos" id="encargos.menu_root" />
 
+        <!-- Vista de busqueda de sesiones -->
+
+    <record id="sesion_search_view" model="ir.ui.view">
+      <field name="name">encargos.sesion.view.search</field>
+      <field name="model">encargos.sesion</field>
+      <field name="arch" type="xml">
+        <search>
+          <field name="encargo_id" />
+          <field name="Etapa" />
+          <!-- Agrupo por el encargo al que pertenece la sesión -->
+          <group expand="0" string="Agrupar Por">
+            <filter string="Encargo" name="group_by_encargo" context="{'group_by': 'encargo_id'}" />
+          </group>
+        </search>
+      </field>
+    </record>
+
+    <!-- Vista de busqueda de materiales -->
+    <record id="material_search_view" model="ir.ui.view">
+      <field name="name">encargos.material.view.search</field>
+      <field name="model">encargos.material</field>
+      <field name="arch" type="xml">
+        <search>
+          <field name="nombre_material" />
+          <field name="encargo_id" />
+          <group expand="0" string="Agrupar Por">
+            <filter string="Encargo" name="group_by_encargo" context="{'group_by': 'encargo_id'}" />
+          </group>
+        </search>
+      </field>
+    </record>
 
     <!-- Acciones -->
     <record model="ir.actions.act_window" id="material_action_window">
@@ -33,7 +64,6 @@
         </p>
       </field>
     </record>
-
 
     <!-- menu categories -->
     <menuitem
@@ -302,36 +332,6 @@
       </field>
     </record>
 
-    <!-- Vista de busqueda de sesiones -->
 
-    <record id="sesion_search_view" model="ir.ui.view">
-      <field name="name">encargos.sesion.view.search</field>
-      <field name="model">encargos.sesion</field>
-      <field name="arch" type="xml">
-        <search>
-          <field name="encargo_id" />
-          <field name="Etapa" />
-          <!-- Agrupo por el encargo al que pertenece la sesión -->
-          <group expand="0" string="Agrupar Por">
-            <filter string="Encargo" name="group_by_encargo" context="{'group_by': 'encargo_id'}" />
-          </group>
-        </search>
-      </field>
-    </record>
-
-    <!-- Vista de busqueda de materiales -->
-    <record id="material_search_view" model="ir.ui.view">
-      <field name="name">encargos.material.view.search</field>
-      <field name="model">encargos.material</field>
-      <field name="arch" type="xml">
-        <search>
-          <field name="nombre_material" />
-          <field name="encargo_id" />
-          <group expand="0" string="Agrupar Por">
-            <filter string="Encargo" name="group_by_encargo" context="{'group_by': 'encargo_id'}" />
-          </group>
-        </search>
-      </field>
-    </record>
   </data>
 </odoo>

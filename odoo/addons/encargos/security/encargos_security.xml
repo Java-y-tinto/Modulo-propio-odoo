@@ -2,15 +2,15 @@
 <odoo>
     <data>
         <!-- Definimos categoria de seguridad -->
-        <record id="encargo.module_category_encargo" model="ir.module.category">
+        <record id="module_category_encargo" model="ir.module.category">
             <field name="name">Encargos</field>
             <field name="description">Ayuda a gestionar tus encargos</field>
             <field name="sequence">100</field>
         </record>
         <!-- Creo un grupo de seguridad -->
-        <record id="encargo.group_encargo_artista" model="res.groups">
+        <record id="group_encargo_artista" model="res.groups">
             <field name="name">Artistas</field>
-            <field name="category_id" ref="encargo.module_category_encargo"/>
+            <field name="category_id" ref="module_category_encargo"/>
             <field name="comment">Usuarios que ven y gestionan encargos</field>
             <field name="users" eval="[(4,ref('base.user_admin'))]"/>
         </record>

@@ -1,0 +1,173 @@
+<odoo>
+    <record id="encargo_report" model="ir.actions.report">
+        <field name="name">Informe de encargos</field>
+        <field name="model">encargos.encargo</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">encargos.encargo_report_view</field>
+        <field name="report_file">encargos.encargo_report</field>
+        <field name="binding_model_id" ref="model_encargos_encargo" />
+        <field name="binding_type">report</field>
+    </record>
+
+
+    <template id="encargo_report_view">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="encargo">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2>Informe de Encargo</h2>
+
+                        <!-- Información básica del encargo -->
+                        <div class="row mb-4">
+                            <div class="col-6">
+                                <strong>Descripción:</strong>
+                                <span t-field="encargo.Descripcion" />
+                            </div>
+                            <div class="col-6">
+                                <strong>Cliente:</strong>
+                                <span t-field="encargo.id_cliente" />
+                            </div>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-4">
+                                <strong>Fecha de inicio:</strong>
+                                <span t-field="encargo.Fecha_inicio" />
+                            </div>
+                            <div class="col-4">
+                                <strong>Fecha de finalización:</strong>
+                                <span t-field="encargo.Fecha_fin" />
+                            </div>
+                            <div class="col-4">
+                                <strong>Estado:</strong>
+                                <t t-if="encargo.estado == 'c'">Creado</t>
+                                <t t-elif="encargo.estado == 'i'">En progreso</t>
+                                <t t-elif="encargo.estado == 't'">Terminado</t>
+                                <t t-elif="encargo.estado == 'e'">Enviado</t>
+                            </div>
+                        </div>
+
+                        <!-- Resumen económico -->
+                        <h3>Resumen Económico</h3>
+                        <div class="row mb-4">
+                            <div class="col-4">
+                                <strong>Precio por hora:</strong>
+                                <span t-field="encargo.Precio_hora"
+                                    t-options="{'widget': 'monetary', 'display_currency': encargo.currency_id}" />
+                            </div>
+                            <div class="col-4">
+                                <strong>Horas totales:</strong> 
+                                <span
+                                    t-field="encargo.Horas_Realizadas" /> horas </div>
+                            <div class="col-4">
+                                <strong>Costo materiales:</strong>
+                                <span t-field="encargo.costo_materiales"
+                                    t-options="{'widget': 'monetary', 'display_currency': encargo.currency_id}" />
+                            </div>
+                        </div>
+
+                        <div class="row mb-5">
+                            <div class="col-12 text-right">
+                                <h4>
+                                    <strong>Total:</strong>
+                                    <span
+                                        t-esc="encargo.Horas_Realizadas * encargo.Precio_hora + encargo.costo_materiales"
+                                        t-options="{'widget': 'monetary', 'display_currency': encargo.currency_id}" />
+                                </h4>
+                            </div>
+                        </div>
+
+                        <!-- Materiales utilizados -->
+                        <h3>Materiales Utilizados</h3>
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Material</th>
+                                    <th>Cantidad</th>
+                                    <th>Precio unitario</th>
+                                    <th>Costo total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="encargo.materiales_ids" t-as="material">
+                                    <tr>
+                                        <td>
+                                            <span t-field="material.nombre_material" />
+                                        </td>
+                                        <td>
+                                            <span t-field="material.cantidad" />
+                                            <span t-field="material.unidades_medida" />
+                                        </td>
+                                        <td>
+                                            <span t-field="material.precio_unitario"
+                                                t-options="{'widget': 'monetary', 'display_currency': encargo.currency_id}" />
+                                        </td>
+                                        <td>
+                                            <span t-field="material.costo_total"
+                                                t-options="{'widget': 'monetary', 'display_currency': encargo.currency_id}" />
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="3" class="text-right">
+                                        <strong>Total:</strong>
+                                    </td>
+                                    <td>
+                                        <strong>
+                                            <span t-field="encargo.costo_materiales"
+                                                t-options="{'widget': 'monetary', 'display_currency': encargo.currency_id}" />
+                                        </strong>
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+
+                        <!-- Sesiones de trabajo -->
+                        <h3>Sesiones de Trabajo</h3>
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Etapa</th>
+                                    <th>Horas</th>
+                                    <th>Notas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="encargo.sesion_ids" t-as="sesion">
+                                    <tr>
+                                        <td>
+                                            <span t-field="sesion.Fecha_inicio" />
+                                        </td>
+                                        <td>
+                                            <t t-if="sesion.Etapa == 'c'">Concepto</t>
+                                            <t t-elif="sesion.Etapa == 'b'">Boceto</t>
+                                            <t t-elif="sesion.Etapa == 'i'">En progreso</t>
+                                            <t t-elif="sesion.Etapa == 'f'">Finalizado</t>
+                                        </td>
+                                        <td><span t-field="sesion.Horas_sesion" /> h</td>
+                                        <td>
+                                            <span t-field="sesion.Notas" />
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="2" class="text-right">
+                                        <strong>Total horas:</strong>
+                                    </td>
+                                    <td colspan="2">
+                                        <strong><span t-field="encargo.Horas_Realizadas" /> h</strong>
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

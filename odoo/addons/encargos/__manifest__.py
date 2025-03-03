@@ -22,10 +22,11 @@ Gestiona encargos de obras de arte de forma automática.Calcula costes de mano d
 
     # always loaded
     'data': [
+        'security/encargos_security.xml',
         'security/ir.model.access.csv',
-        'security/encargo_security.xml',
         'views/views.xml',
         'views/templates.xml',
+        'report/encargos_encargo_report.xml',
     ],
     # only loaded in demonstration mode
     'demo': [
