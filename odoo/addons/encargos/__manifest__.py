@@ -8,7 +8,7 @@
 Gestiona encargos de obras de arte de forma automática.Calcula costes de mano de obra y materiales.Gestiona las sesiones de trabajo.
     """,
 
-    'author': "Jaime Román Rueda",
+    'author': "Jaime",
     'website': "https://www.yourcompany.com",
 
     # Categories can be used to filter modules in modules listing
