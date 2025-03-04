@@ -1,2 +1,4 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_encargo_artista,encargos.encargo.Artistas,model_encargos_encargo,encargos.group_encargo_artista,1,1,1,1
+access_sesion_artista,encargos.Sesion.Artistas,model_encargos_sesion,encargos.group_encargo_artista,1,1,1,1
+access_material_artista,encargos.Material.Artistas,model_encargos_material,encargos.group_encargo_artista,1,1,1,1
